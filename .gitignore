@@ -1,0 +1,7 @@
+rag_env/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+.env
+.vscode/

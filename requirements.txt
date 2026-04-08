@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+requests
+python-dotenv
+opencv-python
+pillow
+easyocr
+wishper
+torch
+transformers
+openai
+python-multipart
+google-cloud-vision
+sumy
+load_dotenv
+moviepy
