@@ -17,7 +17,6 @@ import requests
 import os
 import json
 import time
-# from report_generator import json_to_pdf
 from services.json_to_summary import json_to_summary
 from services.report_generator import json_to_pdf
 from config.config import (
@@ -239,3 +238,4 @@ def list_recordings() -> list[dict]:
 
     files.sort(key=lambda x: os.path.getmtime(x["path"]), reverse=True)
     return files
+

@@ -1,51 +1,111 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from routes.meeting_routes import router as meeting_router
-from routes import bot_routes, webhook_routes
-from config.config import RECORDINGS_DIR, NGROK_URL
-
-from dotenv import load_dotenv
+from routes.auth_routes import router as auth_router
+from routes.chat_routes import router as chat_router
+from Record import record
+from services.scheduler_service import start_scheduler
+from threading import Thread
+from pydantic import BaseModel
+from db.mongo import chat_collection, report_collection  # ✅ added
 import os
 
-# ==============================
-# 🔹 LOAD ENV
-# ==============================
-load_dotenv()
+app = FastAPI()
 
-# ==============================
-# 🔹 APP
-# ==============================
-app = FastAPI(
-    title="Image-to-Text + Meeting Recorder API",
-    version="1.0.0",
-)
+# =========================
+# PATH SETUP
+# =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+os.makedirs(REPORTS_DIR, exist_ok=True)
 
-# ==============================
-# 🔹 STATIC FILES
-# ==============================
+# =========================
+# START SCHEDULER
+# =========================
+@app.on_event("startup")
+def startup_event():
+    print("🚀 App started")
+    start_scheduler()
 
-# 👉 recordings (mp3)
-app.mount("/download", StaticFiles(directory=RECORDINGS_DIR), name="recordings")
+app.include_router(auth_router)
+app.include_router(chat_router)
 
-# 👉 reports (docx) ✅ IMPORTANT
-app.mount("/reports", StaticFiles(directory="reports"), name="reports")
+# =========================
+# STATIC FILES (PDF)
+# =========================
+app.mount("/reports", StaticFiles(directory=REPORTS_DIR), name="reports")
 
-app.include_router(meeting_router)
+# =========================
+# RECORD API
+# =========================
+class MeetingRequest(BaseModel):
+    meeting_url: str
+    meeting_id: str | None = None
+    user_id: str | None = None
 
-# ---- Bot ----
-app.include_router(bot_routes.router)
-app.include_router(webhook_routes.router)
 
-# ==============================
-# 🔹 ROOT
-# ==============================
+@app.post("/record")
+def record_meeting(data: MeetingRequest):
+
+    try:
+        # =========================
+        # ✅ DUPLICATE CHECK (CRITICAL FIX)
+        # =========================
+        if data.meeting_id:
+            existing = report_collection.find_one({
+                "meeting_id": data.meeting_id
+            })
+
+            if existing:
+                print("⚠️ Duplicate recording prevented")
+
+                return {
+                    "message": "⚠️ Recording already exists or in progress",
+                    "meeting_url": data.meeting_url
+                }
+
+        # =========================
+        # 🚀 START RECORDING THREAD
+        # =========================
+        Thread(
+            target=record,
+            args=(data.meeting_url, data.meeting_id, data.user_id),
+            daemon=True
+        ).start()
+
+        return {
+            "message": "⏳ Recording started",
+            "meeting_url": data.meeting_url
+        }
+
+    except Exception as e:
+        print("❌ Record error:", e)
+        return {"error": "Recording failed"}
+
+
+# =========================
+# FETCH CHAT MESSAGES
+# =========================
+@app.get("/messages/{user_id}")
+def get_messages(user_id: str):
+
+    messages = list(
+        chat_collection.find({"user_id": user_id})
+        .sort("created_at", 1)
+    )
+
+    formatted = []
+    for m in messages:
+        formatted.append({
+            "role": "assistant" if m["role"] == "bot" else "user",
+            "content": m["message"]
+        })
+
+    return {"messages": formatted}
+
+
+# =========================
+# ROOT
+# =========================
 @app.get("/")
 def root():
-    return {
-        "message": "🚀 Combined API running",
-        "ngrok_url": NGROK_URL,
-        "download_examples": {
-            "mp3": f"{NGROK_URL}/download/sample.mp3",
-            "docx": f"{NGROK_URL}/reports/sample.docx"
-        }
-    }
+    return {"message": "AI Meeting Bot Running"}

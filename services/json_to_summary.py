@@ -26,13 +26,8 @@ You MUST return ONLY valid JSON in the exact structure below.
 #   ],
 
     "participants": [
-   {
-     "name": "Gautam Soni"
-   },
-   {
-     "name": "Rahul"
-   },  {"role": "string"},
-   ],
+    {"name": "string", "role": "Participant"}
+  ],
 
   "summary": "A detailed professional paragraph",
 
@@ -135,7 +130,8 @@ def clean_list(items, limit=8):
 # MAIN FUNCTION (FINAL)
 # ─────────────────────────────────────────────
 
-def json_to_summary(json_path: str, audio_filename: str = "audio_file") -> dict:
+# def json_to_summary(json_path: str, audio_filename: str = "audio_file") -> dict:
+def json_to_summary(json_path, audio_filename="abc.mp3"):
 
     client = Groq(api_key=GROQ_API_KEY)
     def detect_language_name(lang_code: str) -> str:
@@ -168,7 +164,8 @@ def json_to_summary(json_path: str, audio_filename: str = "audio_file") -> dict:
     word_count     = len(transcript_text.split())
 
     # 🚨 HANDLE SHORT AUDIO (VERY IMPORTANT)
-    if word_count < 20:
+    # if word_count < 20:
+    if word_count < 5:
         return {
             "meta": {
                 "audio_filename": audio_filename,
@@ -310,3 +307,6 @@ def json_to_summary(json_path: str, audio_filename: str = "audio_file") -> dict:
  }
 
     return report
+
+
+

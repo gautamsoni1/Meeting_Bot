@@ -1,6 +1,7 @@
-
-# config/config.py
 import os
+
+# 🔥 ADD THIS LINE HERE (TOP)
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,13 +9,17 @@ load_dotenv()
 # ==============================
 # 🔹 RECALL.AI CONFIG
 # ==============================
+
+MONGO_URI = os.getenv("MONGO_URI")
+DB_NAME = os.getenv("DB_NAME")
+
 RECALL_API_KEY = os.getenv("RECALL_API_KEY")
 BASE_URL       = os.getenv("BASE_URL", "https://us-west-2.recall.ai/api/v1")
 
 # Ngrok public URL (no trailing slash)
 NGROK_URL   = os.getenv("NGROK_URL", "").rstrip("/")
 WEBHOOK_URL = f"{NGROK_URL}/webhook" if NGROK_URL else ""
-
+RECORD_API = f"{NGROK_URL}/record"
 # ==============================
 # 🔹 ASSEMBLYAI CONFIG
 # ==============================
@@ -26,6 +31,15 @@ ASSEMBLY_TRANSCRIPT_URL = os.getenv("ASSEMBLY_TRANSCRIPT_URL")
 # 🔹 GROQ CONFIG
 # ==============================
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# SCOPES = ["https://www.googleapis.com/auth/calendar"]
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "openid"
+]
+GOOGLE_REDIRECT_URI = "https://stimulatingly-glumpier-hannelore.ngrok-free.dev/auth/callback"
+
 
 # ==============================
 # 🔹 HEADER HELPERS
@@ -61,3 +75,4 @@ if not NGROK_URL:
 print("🌐 NGROK_URL      :", NGROK_URL)
 print("🔗 WEBHOOK_URL    :", WEBHOOK_URL)
 print("📁 RECORDINGS_DIR :", RECORDINGS_DIR)
+print("Recall ai :",RECALL_API_KEY)

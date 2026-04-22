@@ -1,20 +1,86 @@
-import os
 from groq import Groq
-from dotenv import load_dotenv
+from config.config import GROQ_API_KEY
+from db.mongo import chat_collection
 
-load_dotenv()
+client = Groq(api_key=GROQ_API_KEY)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def get_chat_response(question: str) -> str:
-    prompt = f"Answer this question simply and clearly:\n\n{question}"
+# ✅ Get last messages from DB
+def get_last_messages(user_id, limit=10):
+    chats = chat_collection.find(
+        {"user_id": user_id}
+    ).sort("_id", -1).limit(limit)
+
+    return list(chats)
+
+
+# ✅ Convert DB chats → LLM format
+def build_chat_context(user_id):
+
+    messages = []
+
+    chats = get_last_messages(user_id)
+
+    for chat in reversed(chats):
+
+        role = chat.get("role", "user")
+
+        # 🔥 FIX ROLE
+        if role not in ["system", "user", "assistant"]:
+            if role == "bot":
+                role = "assistant"
+            else:
+                role = "user"
+
+        messages.append({
+            "role": role,
+            "content": chat.get("message", "")
+        })
+
+    return messages
+
+
+# ✅ MAIN CHAT FUNCTION
+def chat_with_groq(user_id: str, message: str):
+
+    # 🔹 Step 1: Load previous conversation
+    history = build_chat_context(user_id)
+
+    # 🔹 Step 2: Build messages
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."}
+    ]
+
+    # add previous chats
+    messages.extend(history)
+
+    # ✅ add current user message (FIXED)
+    messages.append({
+        "role": "user",
+        "content": message
+    })
+
+    # 🔹 Step 3: Call Groq
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
-        ],
+        messages=messages,
         temperature=0.5,
         max_tokens=300
     )
-    return response.choices[0].message.content
+
+    reply = response.choices[0].message.content
+
+    # 🔹 Step 4: Save conversation in DB
+    chat_collection.insert_one({
+        "user_id": user_id,
+        "role": "user",
+        "message": message
+    })
+
+    chat_collection.insert_one({
+        "user_id": user_id,
+        "role": "assistant",   # ✅ ALWAYS assistant
+        "message": reply
+    })
+
+    return reply

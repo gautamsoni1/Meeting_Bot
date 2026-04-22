@@ -208,3 +208,11 @@ def json_to_pdf(report_json, filename="meeting_report.pdf"):
     doc.build(elements)
 
     return file_path
+
+
+
+
+
+
+
+
