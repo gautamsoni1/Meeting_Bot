@@ -5,7 +5,7 @@ python-dotenv
 opencv-python
 pillow
 easyocr
-wishper
+openai-whisper
 torch
 transformers
 openai
